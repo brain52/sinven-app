@@ -22,6 +22,11 @@ class RepositoryServiceProvider extends ServiceProvider
             \App\Repositories\Contracts\ItemRepositoryInterface::class,
             \App\Repositories\Eloquent\ItemRepository::class
         );
+
+        $this->app->bind(
+            \App\Repositories\Contracts\BorrowingRepositoryInterface::class,
+            \App\Repositories\Eloquent\BorrowingRepository::class
+        );
     }
 
     /**
