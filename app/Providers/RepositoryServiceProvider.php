@@ -27,6 +27,12 @@ class RepositoryServiceProvider extends ServiceProvider
             \App\Repositories\Contracts\BorrowingRepositoryInterface::class,
             \App\Repositories\Eloquent\BorrowingRepository::class
         );
+
+        // Binding Maintenance Repository
+        $this->app->bind(
+            \App\Repositories\Contracts\MaintenanceRepositoryInterface::class,
+            \App\Repositories\Eloquent\MaintenanceRepository::class
+        );
     }
 
     /**

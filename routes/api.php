@@ -23,6 +23,9 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
             Route::post('borrowings', [\App\Http\Controllers\Api\V1\BorrowingController::class, 'store']);
             // Endpoint Pengembalian Barang (BARU)
             Route::post('borrowings/{id}/return', [\App\Http\Controllers\Api\V1\BorrowingController::class, 'returnItem']);
+            // --- ENDPOINT PEMELIHARAAN (BARU) ---
+            Route::post('maintenances', [\App\Http\Controllers\Api\V1\MaintenanceController::class, 'store']);
+            Route::post('maintenances/{id}/complete', [\App\Http\Controllers\Api\V1\MaintenanceController::class, 'complete']);
         });
     });
 });
