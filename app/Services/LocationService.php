@@ -26,7 +26,11 @@ class LocationService
         DB::beginTransaction();
         try {
             $location = $this->locationRepo->create($data);
-            // activity()->performedOn($location)->log('CREATE_LOCATION'); // Audit Trail
+            
+            // FITUR AUDIT TRAIL KINI AKTIF!
+            // Sistem akan mencatat siapa yang membuat lokasi ini
+            activity()->performedOn($location)->log('CREATE_LOCATION');
+            
             DB::commit();
             return $location;
         } catch (Exception $e) {
