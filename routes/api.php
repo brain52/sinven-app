@@ -26,6 +26,9 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
             // --- ENDPOINT PEMELIHARAAN (BARU) ---
             Route::post('maintenances', [\App\Http\Controllers\Api\V1\MaintenanceController::class, 'store']);
             Route::post('maintenances/{id}/complete', [\App\Http\Controllers\Api\V1\MaintenanceController::class, 'complete']);
+            // --- ENDPOINT LAPORAN & EXPORT (BARU) ---
+            Route::get('reports/excel', [\App\Http\Controllers\Api\V1\ReportController::class, 'exportExcel']);
+            Route::get('reports/pdf', [\App\Http\Controllers\Api\V1\ReportController::class, 'exportPdf']);
         });
     });
 });
