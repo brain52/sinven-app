@@ -26,6 +26,8 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
             // --- ENDPOINT PEMELIHARAAN (BARU) ---
             Route::post('maintenances', [\App\Http\Controllers\Api\V1\MaintenanceController::class, 'store']);
             Route::post('maintenances/{id}/complete', [\App\Http\Controllers\Api\V1\MaintenanceController::class, 'complete']);
+            // Endpoint Cetak QR Code (BARU)
+            Route::get('items/{id}/qrcode', [\App\Http\Controllers\Api\V1\ItemController::class, 'generateQr']);
         });
     });
 });

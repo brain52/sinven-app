@@ -34,4 +34,26 @@ class ItemController extends Controller
             'data' => $item
         ], 201);
     }
+    /**
+     * Men-generate QR Code berformat SVG untuk sebuah barang.
+     * QR Code ini berisi Inventory Code unik yang bisa di-scan.
+     */
+    public function generateQr($location_id, $id)
+    {
+        try {
+            // Pastikan barang tersebut ada di lokasi yang sesuai
+            $item = \App\Models\Item::where('location_id', $location_id)->findOrFail($id);
+
+            // Generate QR Code format SVG (Vektor agar tidak pecah saat dicetak)
+            // Menggunakan Facade dari package Simple QrCode
+            $qr = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')
+                    ->size(250)
+                    ->generate($item->inventory_code);
+
+            // Kembalikan response berupa file gambar SVG murni
+            return response($qr)->header('Content-Type', 'image/svg+xml');
+        } catch (Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Barang tidak ditemukan'], 404);
+        }
+    }
 }
