@@ -16,6 +16,31 @@ class BorrowingController extends Controller
     }
 
     /**
+     * Endpoint untuk menampilkan daftar peminjaman.
+     * (FUNGSI INI YANG TADI HILANG KARENA GIT)
+     */
+    public function index(Request $request, $location_id)
+    {
+        try {
+            // Mengambil semua data peminjaman beserta relasi barang dan user
+            $borrowings = \App\Models\Borrowing::with(['item', 'user'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+            
+            return response()->json([
+                'success' => true,
+                'data' => $borrowings
+            ], 200);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error Server: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Endpoint untuk memproses peminjaman barang.
      */
     public function store(Request $request, $location_id)
@@ -47,6 +72,7 @@ class BorrowingController extends Controller
             ], 422); // 422 Unprocessable Entity
         }
     }
+
     /**
      * Endpoint untuk memproses pengembalian barang.
      * Menggunakan method POST karena ini adalah action khusus (bukan sekadar update data biasa).
