@@ -10,6 +10,27 @@ class MaintenanceController extends Controller
 {
     protected $maintenanceService;
 
+    public function index(Request $request, $location_id)
+    {
+        try {
+            // Mengambil daftar pemeliharaan beserta relasi nama barangnya
+            $maintenances = \App\Models\Maintenance::with(['item'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+            
+            return response()->json([
+                'success' => true,
+                'data' => $maintenances
+            ], 200);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error Server: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function __construct(MaintenanceService $maintenanceService)
     {
         $this->maintenanceService = $maintenanceService;

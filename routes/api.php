@@ -61,6 +61,12 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
             // --- ENDPOINT CETAK QR CODE ---
             Route::get('items/{id}/qrcode', [\App\Http\Controllers\Api\V1\ItemController::class, 'generateQr']);
             
+            // --- ENDPOINT PEMELIHARAAN ---
+            // (Tambahkan baris GET ini)
+            Route::get('maintenances', [\App\Http\Controllers\Api\V1\MaintenanceController::class, 'index']);
+            Route::post('maintenances', [\App\Http\Controllers\Api\V1\MaintenanceController::class, 'store']);
+            Route::post('maintenances/{id}/complete', [\App\Http\Controllers\Api\V1\MaintenanceController::class, 'complete']);
+            
         });
     });
 });
