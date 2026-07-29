@@ -56,4 +56,49 @@ class ItemController extends Controller
             return response()->json(['success' => false, 'message' => 'Barang tidak ditemukan'], 404);
         }
     }
+    /**
+     * Mengubah data barang (Edit)
+     */
+    public function update(Request $request, $location_id, $id)
+    {
+        $item = \App\Models\Item::where('location_id', $location_id)->findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'category_id' => 'required|exists:categories,id',
+            'condition_id' => 'required|exists:conditions,id',
+        ]);
+
+        // Simpan perubahan
+        $item->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Barang berhasil diupdate',
+            'data' => $item
+        ]);
+    }
+
+    /**
+     * Menghapus data barang (Delete)
+     */
+    public function destroy($location_id, $id)
+    {
+        try {
+            $item = \App\Models\Item::where('location_id', $location_id)->findOrFail($id);
+            $item->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Barang berhasil dihapus'
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Error ini akan muncul jika Anda menghapus barang yang pernah dipinjam / diservis
+            // (Database menolak agar riwayat data tidak rusak)
+            return response()->json([
+                'success' => false,
+                'message' => 'Barang gagal dihapus karena masih terkait dengan data Peminjaman atau Servis.'
+            ], 422);
+        }
+    }
 }
