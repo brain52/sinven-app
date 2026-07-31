@@ -17,80 +17,77 @@ class BorrowingService
     }
 
     /**
-     * Logika Bisnis: Memproses peminjaman barang.
-     * Menggunakan Database Transaction agar jika satu proses gagal, semua dibatalkan.
+     * Logika Bisnis: Memproses PENGAJUAN peminjaman barang.
      */
-    public function borrowItem(array $data, $adminId)
+    public function borrowItem(array $data, $userId) // Mengubah parameter menjadi $userId karena yang meminjam adalah user/staf
     {
         DB::beginTransaction();
         try {
-            // 1. Cari barang berdasarkan ID
             $item = Item::findOrFail($data['item_id']);
 
-            // 2. Validasi: Pastikan barang sedang "Tersedia"
-            if ($item->status !== 'Tersedia') {
-                throw new Exception("Barang tidak tersedia untuk dipinjam. Status saat ini: {$item->status}");
+            // 1. Validasi: Pastikan barang sedang "Tersedia"
+            if (strtolower($item->status) !== 'tersedia') {
+                throw new Exception("Barang tidak tersedia. Status saat ini: {$item->status}");
             }
 
-            // 3. Siapkan data transaksi peminjaman
+            // 2. Proteksi Ganda: Cek apakah barang ini sedang diajukan oleh orang lain dan belum direspons Admin
+            $hasPending = \App\Models\Borrowing::where('item_id', $item->id)
+                             ->where('status', 'pending')
+                             ->exists();
+            
+            if ($hasPending) {
+                throw new Exception("Barang ini sedang dalam proses antrean pengajuan oleh pengguna lain.");
+            }
+
+            // 3. Siapkan data transaksi pengajuan
             $borrowData = [
                 'item_id' => $item->id,
-                'user_id' => $data['user_id'],
-                'admin_id' => $adminId,
+                'user_id' => $data['user_id'], // User/Staf yang meminjam
+                'admin_id' => null, // KOSONGKAN DULU! Belum ada admin yang menyetujui
                 'borrowed_at' => Carbon::now(),
-                // Misal durasi pinjam default adalah 3 hari (bisa disesuaikan dari request)
                 'expected_return_at' => Carbon::now()->addDays($data['duration_days'] ?? 3),
-                'status' => 'Dipinjam',
+                'status' => 'pending', // STATUS DITAHAN: PENDING
                 'notes' => $data['notes'] ?? null
             ];
 
-            // 4. Simpan transaksi ke tabel borrowings
+            // 4. Simpan ke database
             $borrowing = $this->borrowingRepo->create($borrowData);
 
-            // 5. Update status barang di tabel items menjadi "Dipinjam"
-            $item->update(['status' => 'Dipinjam']);
+            // CATATAN PENTING: Kita TIDAK MENGUBAH status fisik $item di sini.
+            // Status item akan diubah menjadi 'dipinjam' di Controller SAAT Admin menekan Approve.
 
-            DB::commit(); // Simpan semua perubahan secara permanen
+            DB::commit(); 
             return $borrowing;
 
         } catch (Exception $e) {
-            DB::rollBack(); // Batalkan semua perubahan jika ada error
+            DB::rollBack(); 
             throw $e;
         }
     }
+
     /**
      * Logika Bisnis: Memproses pengembalian barang.
-     * 
-     * @param int $borrowingId ID transaksi peminjaman
-     * @param int $adminId ID admin yang memproses pengembalian
-     * @param string|null $notes Catatan kondisi barang saat dikembalikan
      */
     public function returnItem($borrowingId, $adminId, $notes = null)
     {
         DB::beginTransaction();
         try {
-            // 1. Cari data transaksi peminjaman berdasarkan ID
-            $borrowing = $this->borrowingRepo->update($borrowingId, []); // dummy update untuk memastikan ada, atau pakai model langsung
-
-            // Kita gunakan model langsung untuk kemudahan relasi
             $borrowing = \App\Models\Borrowing::with('item')->findOrFail($borrowingId);
 
-            // 2. Validasi: Jangan proses jika barang sudah dikembalikan
-            if ($borrowing->status !== 'Dipinjam') {
-                throw new Exception("Transaksi ini sudah selesai atau berstatus: {$borrowing->status}");
+            // 1. Validasi: Pastikan barang statusnya memang sedang dipinjam (borrowed)
+            if ($borrowing->status !== 'borrowed') {
+                throw new Exception("Transaksi gagal. Status transaksi ini adalah: {$borrowing->status}");
             }
 
-            // 3. Update data transaksi peminjaman
+            // 2. Update status transaksi menjadi dikembalikan
             $borrowing->update([
                 'returned_at' => Carbon::now(),
-                'status' => 'Dikembalikan',
-                // Jika ada catatan baru, gabungkan dengan catatan lama
+                'status' => 'returned',
                 'notes' => $notes ? ($borrowing->notes . ' | Return Note: ' . $notes) : $borrowing->notes,
-                // Mencatat admin siapa yang menerima pengembalian ini (bisa saja admin shift siang)
-                'admin_id' => $adminId 
+                'admin_id' => $adminId // Admin yang mengeksekusi pengembalian
             ]);
 
-            // 4. Bebaskan status barang kembali menjadi "Tersedia"
+            // 3. Bebaskan status fisik barang kembali menjadi "Tersedia"
             $borrowing->item->update(['status' => 'Tersedia']);
 
             DB::commit();

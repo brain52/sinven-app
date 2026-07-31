@@ -17,12 +17,10 @@ class BorrowingController extends Controller
 
     /**
      * Endpoint untuk menampilkan daftar peminjaman.
-     * (FUNGSI INI YANG TADI HILANG KARENA GIT)
      */
     public function index(Request $request, $location_id)
     {
         try {
-            // Mengambil semua data peminjaman beserta relasi barang dan user
             $borrowings = \App\Models\Borrowing::with(['item', 'user'])
                 ->orderBy('created_at', 'desc')
                 ->get();
@@ -32,7 +30,7 @@ class BorrowingController extends Controller
                 'data' => $borrowings
             ], 200);
             
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error Server: ' . $e->getMessage()
@@ -41,11 +39,10 @@ class BorrowingController extends Controller
     }
 
     /**
-     * Endpoint untuk memproses peminjaman barang.
+     * Endpoint untuk memproses pengajuan peminjaman barang.
      */
     public function store(Request $request, $location_id)
     {
-        // Validasi input dari user
         $validated = $request->validate([
             'item_id' => 'required|exists:items,id',
             'user_id' => 'required|exists:users,id',
@@ -54,38 +51,99 @@ class BorrowingController extends Controller
         ]);
 
         try {
-            // Memanggil service untuk memproses peminjaman (mengirim ID admin yang sedang login)
             $borrowing = $this->borrowingService->borrowItem($validated, $request->user()->id);
 
-            // JSRF: JSON Standardized Response Format
             return response()->json([
                 'success' => true,
-                'message' => 'Peminjaman berhasil dicatat.',
+                'message' => 'Pengajuan peminjaman berhasil dicatat dan menunggu persetujuan.',
                 'data' => $borrowing
             ], 201);
 
         } catch (Exception $e) {
-            // Menangkap error dari Service (misal: Barang tidak tersedia)
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
-            ], 422); // 422 Unprocessable Entity
+            ], 422);
+        }
+    }
+
+    /**
+     * Endpoint untuk MENYETUJUI peminjaman (Approval)
+     */
+    public function approve(Request $request, $location_id, $id)
+    {
+        try {
+            $borrowing = \App\Models\Borrowing::findOrFail($id);
+            
+            if ($borrowing->status !== 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hanya pengajuan berstatus pending yang bisa disetujui.'
+                ], 422);
+            }
+
+            // Otorisasi: Ubah status dan catat siapa Admin yang menyetujui
+            $borrowing->status = 'borrowed';
+            $borrowing->admin_id = $request->user()->id; 
+            $borrowing->save();
+
+            // Ubah fisik barang menjadi 'dipinjam'
+            $item = \App\Models\Item::findOrFail($borrowing->item_id);
+            $item->status = 'dipinjam'; 
+            $item->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengajuan peminjaman berhasil disetujui.',
+                'data' => $borrowing
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Endpoint untuk MENOLAK peminjaman (Rejection)
+     */
+    public function reject(Request $request, $location_id, $id)
+    {
+        try {
+            $borrowing = \App\Models\Borrowing::findOrFail($id);
+            
+            if ($borrowing->status !== 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hanya pengajuan berstatus pending yang bisa ditolak.'
+                ], 422);
+            }
+
+            // Otorisasi: Ubah status menjadi ditolak
+            $borrowing->status = 'rejected';
+            $borrowing->admin_id = $request->user()->id;
+            $borrowing->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengajuan peminjaman telah ditolak.',
+                'data' => $borrowing
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
     }
 
     /**
      * Endpoint untuk memproses pengembalian barang.
-     * Menggunakan method POST karena ini adalah action khusus (bukan sekadar update data biasa).
      */
     public function returnItem(Request $request, $location_id, $id)
     {
-        // Validasi opsional: Admin bisa menambahkan catatan barang (misal: "Layar sedikit tergores")
         $validated = $request->validate([
             'notes' => 'nullable|string'
         ]);
 
         try {
-            // Panggil Service untuk mengeksekusi logika pengembalian
             $borrowing = $this->borrowingService->returnItem(
                 $id, 
                 $request->user()->id, 
@@ -96,13 +154,10 @@ class BorrowingController extends Controller
                 'success' => true,
                 'message' => 'Barang berhasil dikembalikan dan tersedia kembali.',
                 'data' => $borrowing
-            ], 200); // 200 OK
+            ], 200);
 
         } catch (Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 422);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
     }
 }

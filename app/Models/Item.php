@@ -23,6 +23,8 @@ class Item extends Model
         'price' => 'decimal:2',
     ];
 
+    
+
     /* FITUR SPATIE DIMATIKAN SEMENTARA
     public function getActivitylogOptions(): LogOptions
     {

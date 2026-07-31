@@ -34,6 +34,7 @@ class ItemController extends Controller
             'data' => $item
         ], 201);
     }
+
     /**
      * Men-generate QR Code berformat SVG untuk sebuah barang.
      * QR Code ini berisi Inventory Code unik yang bisa di-scan.
@@ -52,10 +53,11 @@ class ItemController extends Controller
 
             // Kembalikan response berupa file gambar SVG murni
             return response($qr)->header('Content-Type', 'image/svg+xml');
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Barang tidak ditemukan'], 404);
         }
     }
+
     /**
      * Mengubah data barang (Edit)
      */
@@ -67,6 +69,9 @@ class ItemController extends Controller
             'name' => 'required|string|max:255',
             'category_id' => 'required|exists:categories,id',
             'condition_id' => 'required|exists:conditions,id',
+            // --- TAMBAHAN UNTUK FINANSIAL ---
+            'purchase_date' => 'nullable|date',
+            'price' => 'nullable|numeric|min:0',
         ]);
 
         // Simpan perubahan
