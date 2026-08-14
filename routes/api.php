@@ -16,7 +16,6 @@ Route::get('/user', function (Request $request) {
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
-
 // ==========================================
 // RUTE PRIVAT (WAJIB LOGIN)
 // Semua API kita masukkan ke dalam prefix V1
@@ -46,6 +45,10 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
         Route::prefix('{location_id}')->group(function () {
 
             Route::apiResource('items', \App\Http\Controllers\Api\V1\ItemController::class);
+            
+            // ---> RUTE MUTASI PINDAH KE SINI <---
+            // Karena sudah ada di dalam grup {location_id}, kita cukup menulis 'items/{item_id}/transfer'
+            Route::post('items/{item_id}/transfer', [\App\Http\Controllers\Api\V1\ItemController::class, 'transfer']);
 
             // --- ENDPOINT PEMINJAMAN ---
             Route::get('borrowings', [\App\Http\Controllers\Api\V1\BorrowingController::class, 'index']);
