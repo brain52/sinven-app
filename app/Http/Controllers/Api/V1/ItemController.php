@@ -9,6 +9,7 @@ use App\Models\AssetTransfer;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Models\AssetDisposal; // <-- Tambahkan ini di deretan use paling atas
 
 class ItemController extends Controller
 {
@@ -178,6 +179,41 @@ class ItemController extends Controller
             DB::rollBack();
             // Gunakan status 422 agar pesan error bisa ditangkap oleh pop-up Vue Anda
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+    }
+    public function dispose(Request $request, $location_id, $item_id)
+    {
+        $request->validate([
+            'disposal_type' => 'required|string',
+            'reason' => 'required|string'
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $item = Item::findOrFail($item_id);
+
+            // 1. Catat Berita Acara Pemutihan
+            AssetDisposal::create([
+                'item_id' => $item->id,
+                'disposal_type' => $request->disposal_type,
+                'reason' => $request->reason,
+                'disposed_by' => $request->user()->id,
+                'disposal_date' => Carbon::now(),
+            ]);
+
+            // 2. Ubah status barang menjadi "Dihapuskan" (Jangan di-delete fisik)
+            $item->status = 'Dihapuskan';
+            $item->save();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Aset berhasil diputihkan / diarsipkan.'
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 }

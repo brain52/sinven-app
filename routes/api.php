@@ -67,6 +67,8 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
 
             // --- DASHBOARD ---
             Route::get('dashboard', [\App\Http\Controllers\Api\V1\DashboardController::class, 'index']);
+            // Rute Pemutihan Aset
+Route::post('items/{item_id}/dispose', [\App\Http\Controllers\Api\V1\ItemController::class, 'dispose']);
         });
     });
 });
