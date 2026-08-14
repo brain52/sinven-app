@@ -6,5 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Condition extends Model
 {
-    protected $fillable = ['name'];
+    // Tambahkan baris ini agar data tidak ditolak
+    protected $fillable = ['name', 'description'];
 }

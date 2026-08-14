@@ -11,7 +11,7 @@ class BorrowingController extends Controller
     protected $borrowingService;
 
     public function __construct(BorrowingService $borrowingService)
-    {
+    {  
         $this->borrowingService = $borrowingService;
     }
 
@@ -21,6 +21,7 @@ class BorrowingController extends Controller
     public function index(Request $request, $location_id)
     {
         try {
+            // PERBAIKAN: Hapus withTrashed, panggil relasi secara normal
             $borrowings = \App\Models\Borrowing::with(['item', 'user'])
                 ->orderBy('created_at', 'desc')
                 ->get();

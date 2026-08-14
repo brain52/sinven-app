@@ -10,10 +10,14 @@ class MaintenanceController extends Controller
 {
     protected $maintenanceService;
 
+    public function __construct(MaintenanceService $maintenanceService)
+    {
+        $this->maintenanceService = $maintenanceService;
+    }
+
     public function index(Request $request, $location_id)
     {
         try {
-            // Mengambil daftar pemeliharaan beserta relasi nama barangnya
             $maintenances = \App\Models\Maintenance::with(['item'])
                 ->orderBy('created_at', 'desc')
                 ->get();
@@ -23,7 +27,7 @@ class MaintenanceController extends Controller
                 'data' => $maintenances
             ], 200);
             
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error Server: ' . $e->getMessage()
@@ -31,14 +35,6 @@ class MaintenanceController extends Controller
         }
     }
 
-    public function __construct(MaintenanceService $maintenanceService)
-    {
-        $this->maintenanceService = $maintenanceService;
-    }
-
-    /**
-     * Endpoint untuk merekam pelaporan barang rusak.
-     */
     public function store(Request $request, $location_id)
     {
         $validated = $request->validate([
@@ -47,12 +43,11 @@ class MaintenanceController extends Controller
         ]);
 
         try {
-            // Meneruskan request ke Service Layer
             $maintenance = $this->maintenanceService->reportDamage($validated, $request->user()->id);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Laporan kerusakan berhasil dicatat. Status barang kini Rusak.',
+                'message' => 'Laporan kerusakan berhasil dicatat.',
                 'data' => $maintenance
             ], 201);
         } catch (Exception $e) {
@@ -60,23 +55,32 @@ class MaintenanceController extends Controller
         }
     }
 
-    /**
-     * Endpoint untuk mencatat bahwa perbaikan telah selesai.
-     */
     public function complete(Request $request, $location_id, $id)
     {
+        // 1. Tambahkan validasi untuk next_service_date
         $validated = $request->validate([
             'cost' => 'nullable|numeric|min:0',
-            'resolution_notes' => 'required|string|min:5'
+            'resolution_notes' => 'required|string|min:5',
+            'next_service_date' => 'nullable|date' 
         ]);
 
         try {
-            // Menyelesaikan perbaikan dan mencatat teknisi (user yang sedang login)
+            // 2. Jalankan logika penyelesaian utama melalui Service Anda
             $maintenance = $this->maintenanceService->completeMaintenance($id, $request->user()->id, $validated);
+
+            // 3. Tangkap dan simpan Jadwal Servis Berikutnya (Kalibrasi) ke tabel Item
+            if ($request->filled('next_service_date')) {
+                // Pastikan model Item di-import atau dipanggil secara absolut
+                $item = \App\Models\Item::find($maintenance->item_id);
+                if ($item) {
+                    $item->next_service_date = $request->next_service_date;
+                    $item->save();
+                }
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Perbaikan selesai. Barang kembali tersedia.',
+                'message' => 'Perbaikan selesai. Barang kembali tersedia dan jadwal pemeliharaan diperbarui.',
                 'data' => $maintenance
             ], 200);
         } catch (Exception $e) {

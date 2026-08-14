@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Repositories\Contracts\BorrowingRepositoryInterface;
@@ -32,9 +33,9 @@ class BorrowingService
 
             // 2. Proteksi Ganda: Cek apakah barang ini sedang diajukan oleh orang lain dan belum direspons Admin
             $hasPending = \App\Models\Borrowing::where('item_id', $item->id)
-                             ->where('status', 'pending')
-                             ->exists();
-            
+                ->where('status', 'pending')
+                ->exists();
+
             if ($hasPending) {
                 throw new Exception("Barang ini sedang dalam proses antrean pengajuan oleh pengguna lain.");
             }
@@ -56,11 +57,10 @@ class BorrowingService
             // CATATAN PENTING: Kita TIDAK MENGUBAH status fisik $item di sini.
             // Status item akan diubah menjadi 'dipinjam' di Controller SAAT Admin menekan Approve.
 
-            DB::commit(); 
+            DB::commit();
             return $borrowing;
-
         } catch (Exception $e) {
-            DB::rollBack(); 
+            DB::rollBack();
             throw $e;
         }
     }
@@ -75,8 +75,9 @@ class BorrowingService
             $borrowing = \App\Models\Borrowing::with('item')->findOrFail($borrowingId);
 
             // 1. Validasi: Pastikan barang statusnya memang sedang dipinjam (borrowed)
-            if ($borrowing->status !== 'borrowed') {
-                throw new Exception("Transaksi gagal. Status transaksi ini adalah: {$borrowing->status}");
+            // Ubah menjadi memvalidasi kata 'Dipinjam'
+            if (strtolower($borrowing->status) !== 'dipinjam' && strtolower($borrowing->status) !== 'borrowed') {
+                throw new Exception("Transaksi gagal. Status transaksi ini adalah: " . $borrowing->status);
             }
 
             // 2. Update status transaksi menjadi dikembalikan
@@ -92,7 +93,6 @@ class BorrowingService
 
             DB::commit();
             return $borrowing;
-
         } catch (Exception $e) {
             DB::rollBack();
             throw $e;
