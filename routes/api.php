@@ -68,7 +68,16 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
             // --- DASHBOARD ---
             Route::get('dashboard', [\App\Http\Controllers\Api\V1\DashboardController::class, 'index']);
             // Rute Pemutihan Aset
-Route::post('items/{item_id}/dispose', [\App\Http\Controllers\Api\V1\ItemController::class, 'dispose']);
+            Route::post('items/{item_id}/dispose', [\App\Http\Controllers\Api\V1\ItemController::class, 'dispose']);
+
+            // --- ENDPOINT PENGADAAN BARANG ---
+            Route::get('procurements', [\App\Http\Controllers\Api\V1\ProcurementController::class, 'index']);
+            Route::post('procurements', [\App\Http\Controllers\Api\V1\ProcurementController::class, 'store']);
+            Route::delete('procurements/{id}', [\App\Http\Controllers\Api\V1\ProcurementController::class, 'destroy']);
+    
+            // PASTIKAN BARIS INI ADA DI BAWAHNYA DAN MASIH DI DALAM GROUP
+            Route::post('procurements/{id}/receive', [\App\Http\Controllers\Api\V1\ProcurementController::class, 'receive']);
+
         });
     });
 });

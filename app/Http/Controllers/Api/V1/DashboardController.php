@@ -13,19 +13,23 @@ class DashboardController extends Controller
     public function index(Request $request, $location_id)
     {
         try {
-            // 1. Hitung Total Aset
-            $totalAssets = Item::count();
-            
-            // 2. Hitung Ruangan/Laboratorium (Jika menggunakan tabel lokasi/kategori, sesuaikan di sini. Sementara kita set statis atau hitung kategori)
-            $totalRooms = 7; // Anda bisa mengubahnya nanti jika ada tabel khusus Ruangan
+            // 1. Hitung Total Aset dan Valuasi 
+            // (Aman, karena tabel items pasti punya location_id dan purchase_price)
+            $totalAssets = Item::where('location_id', $location_id)->count();
+            $totalValuation = Item::where('location_id', $location_id)->sum('purchase_price'); 
 
-            // 3. Hitung Pinjaman Aktif (Status 'pending', 'borrowed', atau 'Dipinjam')
+            // 2. Hitung Ruangan/Laboratorium
+            $totalRooms = 7; 
+
+            // 3. Hitung Pinjaman Aktif 
+            // (Dikembalikan ke logika ASLI Anda agar tidak error)
             $activeLoans = Borrowing::whereIn('status', ['pending', 'borrowed', 'Dipinjam'])->count();
 
-            // 4. Hitung Barang yang sedang diservis (Status bukan 'completed' dan 'Selesai')
+            // 4. Hitung Barang yang sedang diservis 
+            // (Dikembalikan ke logika ASLI Anda agar tidak error)
             $activeMaintenances = Maintenance::whereNotIn('status', ['completed', 'Selesai'])->count();
 
-            // 5. Ambil 5 Transaksi Peminjaman Terbaru
+            // 5. Ambil 5 Transaksi Peminjaman Terbaru (Logika ASLI Anda)
             $recentLoans = Borrowing::with(['user', 'item'])
                 ->orderBy('created_at', 'desc')
                 ->take(5)
@@ -34,13 +38,13 @@ class DashboardController extends Controller
                     return [
                         'code' => 'BRW-' . date('Y', strtotime($loan->created_at)) . '-' . str_pad($loan->id, 4, '0', STR_PAD_LEFT),
                         'borrower' => $loan->user->name ?? 'User ID: ' . $loan->user_id,
-                        'department' => 'Umum', // Sesuaikan jika ada relasi departemen
+                        'department' => 'Umum', 
                         'status' => $loan->status,
                         'dueDate' => $loan->expected_return_at ?? $loan->created_at->addDays($loan->duration_days ?? 7)->format('Y-m-d H:i:s'),
                     ];
                 });
 
-            // 6. Ambil 5 Catatan Servis Terbaru
+            // 6. Ambil 5 Catatan Servis Terbaru (Logika ASLI Anda)
             $recentMaintenances = Maintenance::with(['item'])
                 ->orderBy('created_at', 'desc')
                 ->take(5)
@@ -50,16 +54,16 @@ class DashboardController extends Controller
                         'code' => 'MNT-' . date('Y', strtotime($maint->created_at)) . '-' . str_pad($maint->id, 4, '0', STR_PAD_LEFT),
                         'asset' => $maint->item->name ?? 'Unknown Asset',
                         'type' => 'Perbaikan',
-                        // Cek menggunakan huruf kecil agar aman jika ada perbedaan kapitalisasi
                         'status' => (strtolower($maint->status) === 'completed' || strtolower($maint->status) === 'selesai') ? 'Completed' : 'In Progress',
                         'scheduled' => $maint->created_at->format('Y-m-d H:i:s'),
                     ];
                 });
 
-            // 7. Ambil 5 Jadwal Servis / Kalibrasi Mendatang (PROAKTIF)
-            $upcomingServices = Item::whereNotNull('next_service_date')
-                ->whereDate('next_service_date', '>=', now()) // Hanya ambil tanggal hari ini atau masa depan
-                ->orderBy('next_service_date', 'asc') // Urutkan dari yang paling dekat
+            // 7. Ambil 5 Jadwal Servis / Kalibrasi Mendatang
+            $upcomingServices = Item::where('location_id', $location_id)
+                ->whereNotNull('next_service_date')
+                ->whereDate('next_service_date', '>=', now()) 
+                ->orderBy('next_service_date', 'asc') 
                 ->take(5)
                 ->get(['inventory_code', 'name', 'next_service_date']);
 
@@ -68,20 +72,23 @@ class DashboardController extends Controller
                 'data' => [
                     'metrics' => [
                         'total_assets' => $totalAssets,
+                        // Pastikan dikirim sebagai angka numerik (float) agar terbaca oleh Vue
+                        'total_valuation' => (float) $totalValuation, 
                         'total_rooms' => $totalRooms,
                         'active_loans' => $activeLoans,
                         'active_maintenances' => $activeMaintenances,
                     ],
                     'recent_loans' => $recentLoans,
                     'recent_maintenances' => $recentMaintenances,
-                    'upcoming_services' => $upcomingServices, // <-- Disisipkan di sini untuk dikirim ke Vue
+                    'upcoming_services' => $upcomingServices, 
                 ]
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat data dashboard: ' . $e->getMessage()
+                // Tambahkan pesan error asli dari Laravel untuk mempermudah detektif jika ada error lagi
+                'message' => 'Gagal memuat data dashboard: ' . $e->getMessage() 
             ], 500);
         }
     }
